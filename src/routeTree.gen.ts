@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AProposRouteImport } from './routes/a-propos'
 import { Route as RealisationsRouteImport } from './routes/realisations'
+import { Route as StudioAdminRouteImport } from './routes/studio-admin'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -28,35 +29,44 @@ const RealisationsRoute = RealisationsRouteImport.update({
   path: '/realisations',
   getParentRoute: () => rootRouteImport,
 } as any)
+const StudioAdminRoute = StudioAdminRouteImport.update({
+  id: '/studio-admin',
+  path: '/studio-admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/a-propos': typeof AProposRoute
   '/realisations': typeof RealisationsRoute
+  '/studio-admin': typeof StudioAdminRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/a-propos': typeof AProposRoute
   '/realisations': typeof RealisationsRoute
+  '/studio-admin': typeof StudioAdminRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/a-propos': typeof AProposRoute
   '/realisations': typeof RealisationsRoute
+  '/studio-admin': typeof StudioAdminRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/a-propos' | '/realisations'
+  fullPaths: '/' | '/a-propos' | '/realisations' | '/studio-admin'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/a-propos' | '/realisations'
-  id: '__root__' | '/' | '/a-propos' | '/realisations'
+  to: '/' | '/a-propos' | '/realisations' | '/studio-admin'
+  id: '__root__' | '/' | '/a-propos' | '/realisations' | '/studio-admin'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AProposRoute: typeof AProposRoute
   RealisationsRoute: typeof RealisationsRoute
+  StudioAdminRoute: typeof StudioAdminRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -82,6 +92,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RealisationsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/studio-admin': {
+      id: '/studio-admin'
+      path: '/studio-admin'
+      fullPath: '/studio-admin'
+      preLoaderRoute: typeof StudioAdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -89,6 +106,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AProposRoute: AProposRoute,
   RealisationsRoute: RealisationsRoute,
+  StudioAdminRoute: StudioAdminRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
