@@ -14,13 +14,66 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      media: {
+        Row: {
+          created_at: string
+          featured: boolean
+          id: string
+          kind: string
+          sort: number
+          title: string
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          featured?: boolean
+          id?: string
+          kind?: string
+          sort?: number
+          title?: string
+          url: string
+        }
+        Update: {
+          created_at?: string
+          featured?: boolean
+          id?: string
+          kind?: string
+          sort?: number
+          title?: string
+          url?: string
+        }
+        Relationships: []
+      }
+      site_settings: {
+        Row: {
+          accent: string
+          background: string
+          foreground: string
+          id: number
+          updated_at: string
+        }
+        Insert: {
+          accent?: string
+          background?: string
+          foreground?: string
+          id?: number
+          updated_at?: string
+        }
+        Update: {
+          accent?: string
+          background?: string
+          foreground?: string
+          id?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      is_admin: { Args: never; Returns: boolean }
     }
     Enums: {
       [_ in never]: never
