@@ -36,14 +36,23 @@ function Login() {
   const [sent, setSent] = useState(false);
   const [code, setCode] = useState("");
   const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
   const send = async () => {
+    if (busy) return;
     setErr("");
+    setBusy(true);
     const { error } = await supabase.auth.signInWithOtp({
       email: ADMIN_EMAIL,
       options: { emailRedirectTo: window.location.origin + "/studio-admin" },
     });
-    if (error) setErr(error.message);
-    else setSent(true);
+    setBusy(false);
+    if (error) {
+      setErr(
+        error.status === 429
+          ? "Un mail vient déjà d'être envoyé. Patientez 1 minute avant de redemander."
+          : error.message,
+      );
+    } else setSent(true);
   };
   const verify = async () => {
     const { error } = await supabase.auth.verifyOtp({ email: ADMIN_EMAIL, token: code.trim(), type: "email" });
@@ -54,12 +63,20 @@ function Login() {
       <p className="eyebrow">Studio</p>
       <h1 className="text-5xl">Accès privé</h1>
       {!sent ? (
-        <button className="btn btn-accent" onClick={send}>Recevoir le code par mail</button>
+        <button className="btn btn-accent" onClick={send} disabled={busy}>
+          {busy ? "Envoi…" : "Recevoir le lien par mail"}
+        </button>
       ) : (
         <>
-          <p className="text-sm text-muted-foreground">Code envoyé. Entrez-le ou cliquez sur le lien du mail.</p>
-          <input className="field" placeholder="Code" value={code} onChange={(e) => setCode(e.target.value)} />
-          <button className="btn btn-accent" onClick={verify}>Se connecter</button>
+          <p className="text-sm text-muted-foreground">
+            Mail envoyé à {ADMIN_EMAIL}. Pensez à vérifier les spams. Cliquez sur le lien du mail
+            (ouvrez-le dans ce même navigateur), ou collez ici le code s'il y en a un.
+          </p>
+          <input className="field" placeholder="Code (optionnel)" value={code} onChange={(e) => setCode(e.target.value)} />
+          <div className="flex gap-3">
+            <button className="btn btn-accent" onClick={verify} disabled={!code.trim()}>Se connecter</button>
+            <button className="btn" onClick={() => { setSent(false); setErr(""); }}>Renvoyer</button>
+          </div>
         </>
       )}
       {err && <p className="text-sm text-destructive">{err}</p>}
