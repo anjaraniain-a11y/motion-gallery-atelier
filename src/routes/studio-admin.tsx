@@ -1,8 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import type { Session } from "@supabase/supabase-js";
+import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { ADMIN_EMAIL, useMedia, useSettings, type Settings } from "@/lib/site";
+import { useMedia, useSettings, type Settings } from "@/lib/site";
 
 export const Route = createFileRoute("/studio-admin")({
   head: () => ({
@@ -18,16 +17,12 @@ export const Route = createFileRoute("/studio-admin")({
 });
 
 function Admin() {
-  const [session, setSession] = useState<Session | null>(null);
-  useEffect(() => {
-    const { data } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
-    supabase.auth.getSession().then(({ data }) => setSession(data.session));
-    return () => data.subscription.unsubscribe();
-  }, []);
-  const isAdmin = session?.user.email?.toLowerCase() === ADMIN_EMAIL;
+  const [unlocked, setUnlocked] = useState(
+    () => typeof window !== "undefined" && localStorage.getItem(UNLOCK_KEY) === "1",
+  );
   return (
     <div className="h-screen overflow-y-auto px-12 pb-20 pt-28">
-      {isAdmin ? <Dashboard /> : <Login />}
+      {unlocked ? <Dashboard onLock={() => { localStorage.removeItem(UNLOCK_KEY); setUnlocked(false); }} /> : <Login onUnlock={() => setUnlocked(true)} />}
     </div>
   );
 }
