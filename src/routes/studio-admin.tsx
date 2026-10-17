@@ -32,54 +32,35 @@ function Admin() {
   );
 }
 
-function Login() {
-  const [sent, setSent] = useState(false);
-  const [code, setCode] = useState("");
-  const [err, setErr] = useState("");
-  const [busy, setBusy] = useState(false);
-  const send = async () => {
-    if (busy) return;
-    setErr("");
-    setBusy(true);
-    const { error } = await supabase.auth.signInWithOtp({
-      email: ADMIN_EMAIL,
-      options: { emailRedirectTo: window.location.origin + "/studio-admin" },
-    });
-    setBusy(false);
-    if (error) {
-      setErr(
-        error.status === 429
-          ? "Un mail vient déjà d'être envoyé. Patientez 1 minute avant de redemander."
-          : error.message,
-      );
-    } else setSent(true);
-  };
-  const verify = async () => {
-    const { error } = await supabase.auth.verifyOtp({ email: ADMIN_EMAIL, token: code.trim(), type: "email" });
-    if (error) setErr("Code invalide ou expiré.");
+/** Mot de passe admin par défaut — modifiable ici. */
+const ADMIN_PASSWORD = "123456789";
+const UNLOCK_KEY = "studio-admin-unlocked";
+
+function Login({ onUnlock }: { onUnlock: () => void }) {
+  const [pwd, setPwd] = useState("");
+  const [err, setErr] = useState(false);
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (pwd === ADMIN_PASSWORD) {
+      localStorage.setItem(UNLOCK_KEY, "1");
+      onUnlock();
+    } else setErr(true);
   };
   return (
-    <div className="mx-auto max-w-sm space-y-6">
+    <form onSubmit={submit} className="mx-auto max-w-sm space-y-6">
       <p className="eyebrow">Studio</p>
       <h1 className="text-5xl">Accès privé</h1>
-      {!sent ? (
-        <button className="btn btn-accent" onClick={send} disabled={busy}>
-          {busy ? "Envoi…" : "Recevoir le code par mail"}
-        </button>
-      ) : (
-        <>
-          <p className="text-sm text-muted-foreground">
-            Code envoyé à {ADMIN_EMAIL}. Pensez à vérifier les spams.
-          </p>
-          <input className="field" placeholder="Code reçu par mail" inputMode="numeric" autoFocus value={code} onChange={(e) => setCode(e.target.value)} />
-          <div className="flex gap-3">
-            <button className="btn btn-accent" onClick={verify} disabled={!code.trim()}>Se connecter</button>
-            <button className="btn" onClick={() => { setSent(false); setErr(""); }}>Renvoyer</button>
-          </div>
-        </>
-      )}
-      {err && <p className="text-sm text-destructive">{err}</p>}
-    </div>
+      <input
+        className="field"
+        type="password"
+        placeholder="Mot de passe"
+        autoFocus
+        value={pwd}
+        onChange={(e) => { setPwd(e.target.value); setErr(false); }}
+      />
+      <button className="btn btn-accent" type="submit" disabled={!pwd}>Se connecter</button>
+      {err && <p className="text-sm text-destructive">Mot de passe incorrect.</p>}
+    </form>
   );
 }
 
