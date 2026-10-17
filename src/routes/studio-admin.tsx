@@ -64,15 +64,14 @@ function Login() {
       <h1 className="text-5xl">Accès privé</h1>
       {!sent ? (
         <button className="btn btn-accent" onClick={send} disabled={busy}>
-          {busy ? "Envoi…" : "Recevoir le lien par mail"}
+          {busy ? "Envoi…" : "Recevoir le code par mail"}
         </button>
       ) : (
         <>
           <p className="text-sm text-muted-foreground">
-            Mail envoyé à {ADMIN_EMAIL}. Pensez à vérifier les spams. Cliquez sur le lien du mail
-            (ouvrez-le dans ce même navigateur), ou collez ici le code s'il y en a un.
+            Code envoyé à {ADMIN_EMAIL}. Pensez à vérifier les spams.
           </p>
-          <input className="field" placeholder="Code (optionnel)" value={code} onChange={(e) => setCode(e.target.value)} />
+          <input className="field" placeholder="Code reçu par mail" inputMode="numeric" autoFocus value={code} onChange={(e) => setCode(e.target.value)} />
           <div className="flex gap-3">
             <button className="btn btn-accent" onClick={verify} disabled={!code.trim()}>Se connecter</button>
             <button className="btn" onClick={() => { setSent(false); setErr(""); }}>Renvoyer</button>
