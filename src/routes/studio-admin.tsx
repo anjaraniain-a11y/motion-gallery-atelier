@@ -59,7 +59,7 @@ function Login({ onUnlock }: { onUnlock: () => void }) {
   );
 }
 
-function Dashboard() {
+function Dashboard({ onLock }: { onLock: () => void }) {
   const [s, setS] = useSettings();
   const { items, reload } = useMedia();
   const [busy, setBusy] = useState(false);
@@ -114,7 +114,7 @@ function Dashboard() {
     <div className="mx-auto max-w-5xl space-y-14">
       <div className="flex items-end justify-between">
         <h1 className="text-6xl">Studio</h1>
-        <button className="btn" onClick={() => supabase.auth.signOut()}>Déconnexion</button>
+        <button className="btn" onClick={onLock}>Déconnexion</button>
       </div>
       {msg && <p className="text-sm text-primary">{msg}</p>}
 
