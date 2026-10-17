@@ -3,14 +3,19 @@ export function MediaCard({
   src,
   title,
   index,
+  sizeClass = "visuel",
 }: {
   kind: string;
   src: string;
   title: string;
   index: number;
+  sizeClass?: string;
 }) {
   return (
-    <figure className="media-card" style={{ animationDelay: `${index * 80}ms` }}>
+    <figure
+      className={`media-card media-${sizeClass}`}
+      style={{ animationDelay: `${index * 80}ms` }}
+    >
       <div className="media-frame">
         {kind === "video" ? (
           <video src={src} autoPlay muted loop playsInline />

@@ -13,7 +13,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
   return (
     <>
       <nav className="site-nav">
-        <Link to="/" className="brand">Anjara.</Link>
+        <Link to="/" className="brand">A.Santatra</Link>
         <div className="flex gap-8">
           <Link to="/">Accueil</Link>
           <Link to="/realisations">Réalisations</Link>

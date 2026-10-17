@@ -12,6 +12,8 @@ export function HScroll({ children }: { children: ReactNode }) {
     const el = ref.current;
     const tr = track.current;
     if (!el || !tr) return;
+    // Sur mobile : défilement vertical natif, pas de translation horizontale.
+    if (window.matchMedia("(max-width: 767px)").matches) return;
     let target = 0;
     let current = 0;
     let velocity = 0;
