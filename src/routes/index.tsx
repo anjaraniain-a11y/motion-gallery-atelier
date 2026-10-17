@@ -3,6 +3,7 @@ import { HScroll, Panel } from "@/components/HScroll";
 import { MediaCard } from "@/components/MediaCard";
 import { useMedia } from "@/lib/site";
 import { SAMPLES } from "@/lib/samples";
+import { IntroVeil } from "@/components/IntroVeil";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -21,7 +22,9 @@ function Index() {
   const featured = items?.filter((i) => i.featured) ?? [];
   const list = featured.length ? featured : items?.length ? items.slice(0, 6) : SAMPLES;
   return (
-    <HScroll>
+    <>
+      <IntroVeil />
+      <HScroll>
       <Panel>
         <div className="w-[42vw] min-w-[340px]">
           <p className="eyebrow">Designer · Motion</p>
@@ -35,7 +38,7 @@ function Index() {
       </Panel>
       <Panel>
         {list.map((m, i) => (
-          <MediaCard key={m.id} kind={m.kind} src={m.src ?? ""} title={m.title} index={i} />
+          <MediaCard key={m.id} kind={m.kind} src={m.src ?? ""} title={m.title} index={i} sizeClass={m.size_class} />
         ))}
       </Panel>
       <Panel>
@@ -44,6 +47,7 @@ function Index() {
           <Link to="/realisations" className="btn mt-8">Réalisations →</Link>
         </div>
       </Panel>
-    </HScroll>
+      </HScroll>
+    </>
   );
 }

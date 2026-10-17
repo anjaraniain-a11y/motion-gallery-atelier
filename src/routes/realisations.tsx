@@ -39,7 +39,7 @@ function Realisations() {
       </Panel>
       <Panel>
         {list.map((m, i) => (
-          <MediaCard key={m.id + filter} kind={m.kind} src={m.src ?? ""} title={m.title} index={i} />
+          <MediaCard key={m.id + filter} kind={m.kind} src={m.src ?? ""} title={m.title} index={i} sizeClass={m.size_class} />
         ))}
         {!list.length && <p className="text-muted-foreground">Rien ici pour l'instant.</p>}
       </Panel>
