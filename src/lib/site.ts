@@ -12,6 +12,7 @@ export type MediaItem = {
   title: string;
   featured: boolean;
   sort: number;
+  size_class?: "grand" | "visuel" | "petit";
   src?: string; // lien lisible
 };
 
