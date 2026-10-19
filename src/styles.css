@@ -211,8 +211,8 @@
 /* Responsive mobile : défilement vertical natif */
 @media (max-width: 767px) {
   body { overflow: auto; }
-  .site-nav { padding: 1rem 1.25rem; gap: 1rem; }
-  .site-nav .flex { gap: 1.1rem; }
+  .site-nav { padding: 1rem 1.25rem; gap: .8rem; font-size: .68rem; }
+  .site-nav .flex { gap: .9rem; }
   .site-nav .brand { font-size: 1.05rem; }
   .hscroll { height: auto; overflow: visible; cursor: default; }
   .hscroll-track { flex-direction: column; width: 100%; transform: none !important; }
