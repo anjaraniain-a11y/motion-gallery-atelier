@@ -17,33 +17,95 @@ export type Database = {
       media: {
         Row: {
           created_at: string
+          description: string
           featured: boolean
           id: string
           kind: string
+          project_id: string | null
           size_class: string
           sort: number
           title: string
           url: string
+          visible: boolean
         }
         Insert: {
           created_at?: string
+          description?: string
           featured?: boolean
           id?: string
           kind?: string
+          project_id?: string | null
           size_class?: string
           sort?: number
           title?: string
           url: string
+          visible?: boolean
         }
         Update: {
           created_at?: string
+          description?: string
           featured?: boolean
           id?: string
           kind?: string
+          project_id?: string | null
           size_class?: string
           sort?: number
           title?: string
           url?: string
+          visible?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "media_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      projects: {
+        Row: {
+          brand: string
+          created_at: string
+          description: string
+          id: string
+          sort: number
+          title: string
+          visible: boolean
+        }
+        Insert: {
+          brand?: string
+          created_at?: string
+          description?: string
+          id?: string
+          sort?: number
+          title?: string
+          visible?: boolean
+        }
+        Update: {
+          brand?: string
+          created_at?: string
+          description?: string
+          id?: string
+          sort?: number
+          title?: string
+          visible?: boolean
+        }
+        Relationships: []
+      }
+      site_content: {
+        Row: {
+          key: string
+          value: string
+        }
+        Insert: {
+          key: string
+          value?: string
+        }
+        Update: {
+          key?: string
+          value?: string
         }
         Relationships: []
       }
