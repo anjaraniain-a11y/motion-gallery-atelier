@@ -20,6 +20,7 @@ export type Database = {
           featured: boolean
           id: string
           kind: string
+          size_class: string
           sort: number
           title: string
           url: string
@@ -29,6 +30,7 @@ export type Database = {
           featured?: boolean
           id?: string
           kind?: string
+          size_class?: string
           sort?: number
           title?: string
           url: string
@@ -38,6 +40,7 @@ export type Database = {
           featured?: boolean
           id?: string
           kind?: string
+          size_class?: string
           sort?: number
           title?: string
           url?: string
