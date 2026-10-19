@@ -1,17 +1,18 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { HScroll, Panel } from "@/components/HScroll";
 import { MediaCard } from "@/components/MediaCard";
-import { useMedia } from "@/lib/site";
-import { SAMPLES } from "@/lib/samples";
+import { useContent, useMedia } from "@/lib/site";
 import { IntroVeil } from "@/components/IntroVeil";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Anjara — Designer & Motion Designer" },
+      { title: "A.Santatra — Designer & Motion Designer" },
       { name: "description", content: "Portfolio de design graphique et motion design : les meilleures créations." },
-      { property: "og:title", content: "Anjara — Designer & Motion Designer" },
+      { property: "og:title", content: "A.Santatra — Designer & Motion Designer" },
       { property: "og:description", content: "Portfolio de design graphique et motion design." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: Index,
@@ -19,34 +20,39 @@ export const Route = createFileRoute("/")({
 
 function Index() {
   const { items } = useMedia();
-  const featured = items?.filter((i) => i.featured) ?? [];
-  const list = featured.length ? featured : items?.length ? items.slice(0, 6) : SAMPLES;
+  const [c] = useContent();
+  const vis = items?.filter((i) => i.visible) ?? [];
+  const featured = vis.filter((i) => i.featured);
+  const list = featured.length ? featured : vis.slice(0, 6);
+  const lines = c.home_title.split("\n");
   return (
     <>
       <IntroVeil />
       <HScroll>
-      <Panel>
-        <div className="w-[42vw] min-w-[340px]">
-          <p className="eyebrow">Designer · Motion</p>
-          <h1 className="mt-6 text-[clamp(3.5rem,8vw,8rem)] leading-[0.9]">
-            Formes,<br />mouvement<br /><em className="text-primary">& silence.</em>
-          </h1>
-          <p className="mt-8 max-w-sm text-muted-foreground">
-            Une sélection de mes meilleurs projets. Faites défiler →
-          </p>
-        </div>
-      </Panel>
-      <Panel>
-        {list.map((m, i) => (
-          <MediaCard key={m.id} kind={m.kind} src={m.src ?? ""} title={m.title} index={i} sizeClass={m.size_class} />
-        ))}
-      </Panel>
-      <Panel>
-        <div className="w-[36vw] min-w-[300px]">
-          <h2 className="text-6xl">Voir tout le travail</h2>
-          <Link to="/realisations" className="btn mt-8">Réalisations →</Link>
-        </div>
-      </Panel>
+        <Panel>
+          <div className="w-[42vw] min-w-[300px]">
+            <p className="eyebrow">{c.home_eyebrow}</p>
+            <h1 className="mt-6 text-[clamp(3rem,8vw,8rem)] leading-[0.9]">
+              {lines.map((l, i) => (
+                <span key={i} className={i === lines.length - 1 ? "block text-primary" : "block"}>{l}</span>
+              ))}
+            </h1>
+            <p className="mt-8 max-w-sm text-muted-foreground">{c.home_text}</p>
+          </div>
+        </Panel>
+        {list.length > 0 && (
+          <Panel>
+            {list.map((m, i) => (
+              <MediaCard key={m.id} kind={m.kind} src={m.src ?? ""} title={m.title} index={i} sizeClass={m.size_class} />
+            ))}
+          </Panel>
+        )}
+        <Panel>
+          <div className="w-[36vw] min-w-[280px]">
+            <h2 className="text-6xl">Voir tout le travail</h2>
+            <Link to="/realisations" className="btn mt-8">Réalisations →</Link>
+          </div>
+        </Panel>
       </HScroll>
     </>
   );
