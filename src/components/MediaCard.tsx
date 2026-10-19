@@ -9,7 +9,7 @@ export function MediaCard({
   src: string;
   title: string;
   index: number;
-  sizeClass?: string;
+  sizeClass?: string | undefined;
 }) {
   return (
     <figure
