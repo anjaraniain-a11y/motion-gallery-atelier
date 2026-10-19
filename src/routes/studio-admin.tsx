@@ -21,7 +21,7 @@ function Admin() {
     () => typeof window !== "undefined" && localStorage.getItem(UNLOCK_KEY) === "1",
   );
   return (
-    <div className="h-screen overflow-y-auto px-12 pb-20 pt-28">
+    <div className="h-screen overflow-y-auto px-5 pb-20 pt-24 md:px-12 md:pt-28">
       {unlocked ? <Dashboard onLock={() => { localStorage.removeItem(UNLOCK_KEY); setUnlocked(false); }} /> : <Login onUnlock={() => setUnlocked(true)} />}
     </div>
   );
@@ -92,8 +92,9 @@ function Dashboard({ onLock }: { onLock: () => void }) {
     reload();
   };
 
-  const update = async (id: string, patch: Partial<{ title: string; featured: boolean; sort: number }>) => {
-    await supabase.from("media").update(patch).eq("id", id);
+  const update = async (id: string, patch: Partial<{ title: string; featured: boolean; sort: number; size_class: string }>) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await supabase.from("media").update(patch as any).eq("id", id);
     reload();
   };
   const remove = async (id: string, path: string) => {
@@ -145,6 +146,16 @@ function Dashboard({ onLock }: { onLock: () => void }) {
                 )}
               </div>
               <input className="field text-sm" defaultValue={m.title} onBlur={(e) => e.target.value !== m.title && update(m.id, { title: e.target.value })} />
+              <select
+                className="field text-xs"
+                value={m.size_class ?? "visuel"}
+                onChange={(e) => update(m.id, { size_class: e.target.value })}
+                title="Classe d'affichage"
+              >
+                <option value="grand">Grand projet</option>
+                <option value="visuel">Visuel simple</option>
+                <option value="petit">Petit</option>
+              </select>
               <div className="flex items-center justify-between text-xs">
                 <label className="flex items-center gap-2">
                   <input type="checkbox" checked={m.featured} onChange={(e) => update(m.id, { featured: e.target.checked })} />
