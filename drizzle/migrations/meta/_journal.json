@@ -8,6 +8,13 @@
       "when": 1792146834678,
       "tag": "0000_portfolio",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1792395925129,
+      "tag": "0001_projects_content",
+      "breakpoints": true
     }
   ]
 }
