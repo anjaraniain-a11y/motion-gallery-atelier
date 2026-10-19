@@ -21,7 +21,7 @@ function Admin() {
     () => typeof window !== "undefined" && localStorage.getItem(UNLOCK_KEY) === "1",
   );
   return (
-    <div className="h-screen overflow-y-auto px-12 pb-20 pt-28">
+    <div className="h-screen overflow-y-auto px-5 pb-20 pt-24 md:px-12 md:pt-28">
       {unlocked ? <Dashboard onLock={() => { localStorage.removeItem(UNLOCK_KEY); setUnlocked(false); }} /> : <Login onUnlock={() => setUnlocked(true)} />}
     </div>
   );
