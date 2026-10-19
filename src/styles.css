@@ -223,3 +223,7 @@
   .media-frame { flex: none; }
   .media-frame img, .media-frame video { width: 100%; max-width: 100%; height: auto; max-height: 62vh; }
 }
+
+@layer components {
+  .project-intro { align-self: center; padding-right: 2vw; border-left: 1px solid var(--border); padding-left: 1.5rem; animation: rise 1.4s cubic-bezier(.16,1,.3,1) both; }
+}
