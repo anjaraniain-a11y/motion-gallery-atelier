@@ -15,7 +15,7 @@ export type MediaItem = {
   visible: boolean;
   sort: number;
   project_id: string | null;
-  size_class?: "grand" | "visuel" | "petit";
+  size_class?: "grand" | "visuel" | "petit" | undefined;
   src?: string;
 };
 export type Project = {
@@ -30,7 +30,7 @@ export type Project = {
 export const DEFAULT_SETTINGS: Settings = { background: "#f4f1ec", foreground: "#1a1a1a", accent: "#c2410c" };
 
 /** Textes modifiables depuis l'admin (valeurs par défaut). */
-export const DEFAULT_CONTENT: Record<string, string> = {
+export const DEFAULT_CONTENT = {
   home_eyebrow: "Designer · Motion",
   home_title: "Formes,\nmouvement\n& silence.",
   home_text: "Une sélection de mes meilleurs projets. Faites défiler →",
@@ -43,7 +43,8 @@ export const DEFAULT_CONTENT: Record<string, string> = {
     "Design | Identité, affiche, direction artistique\nMotion | Animation 2D/3D, logo animé, réseaux sociaux\nOutils | After Effects, Cinema 4D, Figma, Illustrator",
   contact_title: "Parlons-en.",
 };
-export const CONTENT_LABELS: Record<string, string> = {
+export type Content = Record<keyof typeof DEFAULT_CONTENT, string>;
+export const CONTENT_LABELS: Content = {
   home_eyebrow: "Accueil — petit titre",
   home_title: "Accueil — grand titre (retour à la ligne = nouvelle ligne)",
   home_text: "Accueil — texte",
@@ -65,7 +66,7 @@ export function useSettings() {
 }
 
 export function useContent() {
-  const [c, setC] = useState<Record<string, string>>(DEFAULT_CONTENT);
+  const [c, setC] = useState<Content>(DEFAULT_CONTENT);
   useEffect(() => {
     supabase.from("site_content").select("key,value").then(({ data }) => {
       if (data) setC({ ...DEFAULT_CONTENT, ...Object.fromEntries(data.map((r) => [r.key, r.value])) });

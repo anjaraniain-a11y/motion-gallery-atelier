@@ -110,7 +110,7 @@ function MediaTab({ flash }: { flash: (m: string) => void }) {
 
   const update = async (id: string, patch: Partial<MediaItem>) => {
     const { src: _s, ...rest } = patch;
-    await supabase.from("media").update(rest).eq("id", id);
+    await supabase.from("media").update(rest as never).eq("id", id);
     reload();
   };
   const remove = async (m: MediaItem) => {
@@ -225,16 +225,16 @@ function ProjectsTab({ flash }: { flash: (m: string) => void }) {
 function TextsTab({ flash }: { flash: (m: string) => void }) {
   const [c, setC] = useContent();
   const save = async () => {
-    const rows = Object.keys(CONTENT_LABELS).map((key) => ({ key, value: c[key] ?? "" }));
+    const rows = (Object.keys(CONTENT_LABELS) as (keyof typeof c)[]).map((key) => ({ key, value: c[key] }));
     const { error } = await supabase.from("site_content").upsert(rows);
     flash(error ? error.message : "Textes enregistrés ✓");
   };
   return (
     <section className="space-y-5">
-      {Object.entries(CONTENT_LABELS).map(([k, label]) => (
+      {(Object.entries(CONTENT_LABELS) as [keyof typeof c, string][]).map(([k, label]) => (
         <label key={k} className="block space-y-1">
           <span className="text-xs text-muted-foreground">{label}</span>
-          <textarea className="field min-h-12 resize-y text-sm" value={c[k] ?? ""} onChange={(e) => setC({ ...c, [k]: e.target.value })} />
+          <textarea className="field min-h-12 resize-y text-sm" value={c[k]} onChange={(e) => setC({ ...c, [k]: e.target.value })} />
         </label>
       ))}
       <button className="btn btn-accent" onClick={save}>Enregistrer les textes</button>
