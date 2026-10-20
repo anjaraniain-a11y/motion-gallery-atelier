@@ -110,7 +110,7 @@ function MediaTab({ flash }: { flash: (m: string) => void }) {
 
   const update = async (id: string, patch: Partial<MediaItem>) => {
     const { src: _s, ...rest } = patch;
-    await supabase.from("media").update(rest).eq("id", id);
+    await supabase.from("media").update(rest as never).eq("id", id);
     reload();
   };
   const remove = async (m: MediaItem) => {
