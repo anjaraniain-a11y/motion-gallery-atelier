@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { MEDIA_CATEGORIES, type MediaCategory } from "@/lib/media-categories";
 import { supabase } from "@/integrations/supabase/client";
 import {
   CONTENT_LABELS, useContent, useMedia, useProjects, useSettings,
@@ -14,6 +15,8 @@ export const Route = createFileRoute("/studio-admin")({
       { name: "robots", content: "noindex, nofollow" },
       { property: "og:title", content: "Studio — A.Santatra" },
       { property: "og:description", content: "Espace privé." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: Admin,
@@ -24,9 +27,8 @@ const ADMIN_PASSWORD = "159623874";
 const UNLOCK_KEY = "studio-admin-unlocked-v2";
 
 function Admin() {
-  const [unlocked, setUnlocked] = useState(
-    () => typeof window !== "undefined" && localStorage.getItem(UNLOCK_KEY) === "1",
-  );
+  const [unlocked, setUnlocked] = useState(false);
+  useEffect(() => { setUnlocked(localStorage.getItem(UNLOCK_KEY) === "1"); }, []);
   return (
     <div className="h-screen overflow-y-auto px-5 pb-20 pt-24 md:px-12 md:pt-28">
       {unlocked ? (
@@ -92,31 +94,40 @@ function MediaTab({ flash }: { flash: (m: string) => void }) {
   const upload = async (files: FileList | null) => {
     if (!files?.length) return;
     setBusy(true);
+    let added = 0;
+    let errors = 0;
     for (const f of Array.from(files)) {
       const path = `${Date.now()}-${f.name.replace(/[^\w.-]/g, "_")}`;
       const { error } = await supabase.storage.from("media").upload(path, f);
-      if (error) { flash(error.message); continue; }
-      await supabase.from("media").insert({
+      if (error) { errors++; continue; }
+      const { error: insertError } = await supabase.from("media").insert({
         url: path,
         kind: f.type.startsWith("video") ? "video" : "image",
         title: f.name.replace(/\.[^.]+$/, ""),
         project_id: filter !== "all" && filter !== "none" ? filter : null,
       });
+      if (insertError) {
+        errors++;
+        await supabase.storage.from("media").remove([path]);
+      } else added++;
     }
     setBusy(false);
-    flash("Fichiers ajoutés ✓");
+    flash(errors ? `${added} fichier(s) ajouté(s), ${errors} échec(s). Réessayez.` : "Fichiers ajoutés ✓");
     reload();
   };
 
   const update = async (id: string, patch: Partial<MediaItem>) => {
     const { src: _s, ...rest } = patch;
-    await supabase.from("media").update(rest as never).eq("id", id);
+    const { error } = await supabase.from("media").update(rest).eq("id", id);
+    flash(error ? "Enregistrement impossible. Réessayez." : "Enregistré ✓");
     reload();
   };
   const remove = async (m: MediaItem) => {
     if (!confirm(`Supprimer définitivement « ${m.title} » ?`)) return;
-    await supabase.storage.from("media").remove([m.url]);
-    await supabase.from("media").delete().eq("id", m.id);
+    const { error: storageError } = await supabase.storage.from("media").remove([m.url]);
+    if (storageError) { flash("Suppression du fichier impossible. Réessayez."); return; }
+    const { error } = await supabase.from("media").delete().eq("id", m.id);
+    if (error) { flash("Suppression de la fiche impossible. Réessayez."); return; }
     flash("Supprimé ✓");
     reload();
   };
@@ -129,7 +140,7 @@ function MediaTab({ flash }: { flash: (m: string) => void }) {
       <div className="flex flex-wrap items-center gap-4">
         <label className="btn btn-accent cursor-pointer">
           {busy ? "Envoi…" : "+ Ajouter des fichiers"}
-          <input type="file" multiple accept="image/*,video/*" className="hidden" onChange={(e) => upload(e.target.files)} />
+          <input type="file" multiple accept="image/*,video/*" className="hidden" disabled={busy} onChange={(e) => { upload(e.target.files); e.target.value = ""; }} />
         </label>
         <select className="field w-auto text-sm" value={filter} onChange={(e) => setFilter(e.target.value)}>
           <option value="all">Tous les fichiers</option>
@@ -144,9 +155,9 @@ function MediaTab({ flash }: { flash: (m: string) => void }) {
           <div key={m.id} className={`space-y-2 border border-border p-3 ${m.visible ? "" : "opacity-50"}`}>
             <div className="aspect-[4/3] overflow-hidden bg-card">
               {m.kind === "video" ? (
-                <video src={m.src} muted loop autoPlay playsInline className="h-full w-full object-cover" />
+                <video src={m.src} muted loop controls playsInline className="h-full w-full object-contain" />
               ) : (
-                <img src={m.src} alt={m.title} className="h-full w-full object-cover" />
+                <img src={m.src} alt={m.title} className="h-full w-full object-contain" />
               )}
             </div>
             <input className="field text-sm" placeholder="Nom" defaultValue={m.title}
@@ -161,6 +172,9 @@ function MediaTab({ flash }: { flash: (m: string) => void }) {
               <option value="grand">Grand format</option>
               <option value="visuel">Format normal</option>
               <option value="petit">Petit format</option>
+            </select>
+            <select aria-label={`Type : ${m.title}`} className="field text-xs" value={m.category ?? "autre"} onChange={(e) => update(m.id, { category: e.target.value as MediaCategory })}>
+              {Object.entries(MEDIA_CATEGORIES).map(([k, label]) => <option key={k} value={k}>{label}</option>)}
             </select>
             <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
               <label className="flex items-center gap-1">
@@ -184,17 +198,19 @@ function MediaTab({ flash }: { flash: (m: string) => void }) {
 function ProjectsTab({ flash }: { flash: (m: string) => void }) {
   const { projects, reload } = useProjects();
   const add = async () => {
-    await supabase.from("projects").insert({ title: "Nouveau projet", sort: (projects?.length ?? 0) });
+    const { error } = await supabase.from("projects").insert({ title: "Nouveau projet", sort: (projects?.length ?? 0) });
+    flash(error ? "Création impossible. Réessayez." : "Projet ajouté ✓");
     reload();
   };
   const update = async (id: string, patch: Partial<Project>) => {
-    await supabase.from("projects").update(patch).eq("id", id);
-    flash("Enregistré ✓");
+    const { error } = await supabase.from("projects").update(patch).eq("id", id);
+    flash(error ? "Enregistrement impossible. Réessayez." : "Enregistré ✓");
     reload();
   };
   const remove = async (p: Project) => {
     if (!confirm(`Supprimer le projet « ${p.title} » ? Ses visuels deviennent des visuels uniques.`)) return;
-    await supabase.from("projects").delete().eq("id", p.id);
+    const { error } = await supabase.from("projects").delete().eq("id", p.id);
+    flash(error ? "Suppression impossible. Réessayez." : "Projet supprimé ✓");
     reload();
   };
   return (
