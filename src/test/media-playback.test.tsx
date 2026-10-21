@@ -5,8 +5,8 @@ import { MediaCard } from "@/components/MediaCard";
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 describe("Video playback", () => {
   it("pauses playback and resumes it on request", () => {
-    const pause = vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(function () { fireEvent.pause(this); });
-    const play = vi.spyOn(HTMLMediaElement.prototype, "play").mockImplementation(function () { fireEvent.play(this); return Promise.resolve(); });
+    const pause = vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(function (this: HTMLMediaElement) { fireEvent.pause(this); });
+    const play = vi.spyOn(HTMLMediaElement.prototype, "play").mockImplementation(function (this: HTMLMediaElement) { fireEvent.play(this); return Promise.resolve(); });
     render(<MediaCard kind="video" src="/test.mp4" title="Motion" index={0} />);
     const video = document.querySelector("video");
     if (!video) throw new Error("Video absent");

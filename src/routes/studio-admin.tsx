@@ -117,8 +117,8 @@ function MediaTab({ flash }: { flash: (m: string) => void }) {
   };
 
   const update = async (id: string, patch: Partial<MediaItem>) => {
-    const { src: _s, ...rest } = patch;
-    const { error } = await supabase.from("media").update(rest).eq("id", id);
+    const { src: _s, size_class, ...rest } = patch;
+    const { error } = await supabase.from("media").update({ ...rest, ...(size_class === undefined ? {} : { size_class }) }).eq("id", id);
     flash(error ? "Enregistrement impossible. Réessayez." : "Enregistré ✓");
     reload();
   };
