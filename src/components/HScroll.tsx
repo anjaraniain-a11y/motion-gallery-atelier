@@ -53,12 +53,12 @@ export function HScroll({ children }: { children: ReactNode }) {
     const up = () => { dragging = false; };
 
     const onPD = (e: PointerEvent) => {
-      if ((e.target as HTMLElement).closest("a,button,input,textarea,label")) return;
+      if ((e.target as HTMLElement).closest("a,button,input,textarea,label,select,[role=dialog]")) return;
       down(e.clientX);
     };
     const onPM = (e: PointerEvent) => move(e.clientX);
     const onKey = (e: KeyboardEvent) => {
-      if ((e.target as HTMLElement).closest("input,textarea")) return;
+      if ((e.target as HTMLElement).closest("input,textarea,select,[role=dialog]") || document.querySelector('[role="dialog"]')) return;
       if (e.key === "ArrowRight") target = clamp(target + el.clientWidth * 0.6);
       if (e.key === "ArrowLeft") target = clamp(target - el.clientWidth * 0.6);
     };

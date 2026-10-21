@@ -1,0 +1,2 @@
+ALTER TABLE public.media ADD COLUMN IF NOT EXISTS category text NOT NULL DEFAULT 'autre';
+ALTER TABLE public.media ADD CONSTRAINT media_category_allowed CHECK (category IN ('logo', 'affiche', 'reseaux-sociaux', 'autre'));

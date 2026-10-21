@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import type { MediaCategory } from "@/lib/media-categories";
 
 /** Email de contact fixe. */
 export const ADMIN_EMAIL = "anjaraniain@gmail.com";
@@ -15,6 +16,7 @@ export type MediaItem = {
   visible: boolean;
   sort: number;
   project_id: string | null;
+  category: MediaCategory;
   size_class?: "grand" | "visuel" | "petit" | undefined;
   src?: string;
 };
