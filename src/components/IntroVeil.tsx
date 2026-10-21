@@ -4,9 +4,8 @@ const KEY = "intro-seen";
 
 /** Voile d'entrée : recouvre le site, disparaît au clic. */
 export function IntroVeil() {
-  const [show, setShow] = useState(
-    () => typeof window !== "undefined" && !sessionStorage.getItem(KEY),
-  );
+  const [show, setShow] = useState(false);
+  useEffect(() => { setShow(!sessionStorage.getItem(KEY)); }, []);
   const [leaving, setLeaving] = useState(false);
 
   useEffect(() => {

@@ -1,7 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { HScroll, Panel } from "@/components/HScroll";
 import { MediaCard } from "@/components/MediaCard";
-import { useContent, useMedia } from "@/lib/site";
+import { useContent, useMedia, useProjects } from "@/lib/site";
+import { selectPublicMedia } from "@/lib/media-categories";
 import { IntroVeil } from "@/components/IntroVeil";
 
 export const Route = createFileRoute("/")({
@@ -20,8 +21,9 @@ export const Route = createFileRoute("/")({
 
 function Index() {
   const { items } = useMedia();
+  const { projects } = useProjects();
   const [c] = useContent();
-  const vis = items?.filter((i) => i.visible) ?? [];
+  const vis = selectPublicMedia(items ?? [], projects ?? []);
   const featured = vis.filter((i) => i.featured);
   const list = featured.length ? featured : vis.slice(0, 6);
   const lines = c.home_title.split("\n");
@@ -43,7 +45,7 @@ function Index() {
         {list.length > 0 && (
           <Panel>
             {list.map((m, i) => (
-              <MediaCard key={m.id} kind={m.kind} src={m.src ?? ""} title={m.title} index={i} sizeClass={m.size_class} />
+              <MediaCard key={m.id} kind={m.kind} src={m.src ?? ""} title={m.title} description={m.description} index={i} sizeClass={m.size_class} category={m.category} />
             ))}
           </Panel>
         )}
