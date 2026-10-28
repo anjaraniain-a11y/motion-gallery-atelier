@@ -47,10 +47,14 @@ function Realisations() {
               </Button>
             ))}
           </div>
-          <select aria-label="Type de réalisation" className="field mt-4" value={category} onChange={(e) => setCategory(e.target.value)}>
-            <option value="all">Tous les types</option>
-            {Object.entries(MEDIA_CATEGORIES).map(([k, label]) => <option key={k} value={k}>{label}</option>)}
-          </select>
+          <div role="group" aria-label="Type de réalisation" className="mt-4 flex flex-wrap gap-2">
+            {Object.entries({ all: "Tous les types", ...MEDIA_CATEGORIES }).map(([key, label]) => (
+              <Button key={key} size="sm" className="rounded-full" aria-pressed={category === key}
+                variant={category === key ? "default" : "outline"} onClick={() => setCategory(key)}>
+                {label}
+              </Button>
+            ))}
+          </div>
         </div>
       </Panel>
       {filter !== "visuels" &&
