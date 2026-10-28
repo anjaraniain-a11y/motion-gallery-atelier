@@ -1,15 +1,20 @@
-# Médias Cloudinary
+# Médias et projets entièrement dans Cloudinary
 
 - Conserver le design et les réglages actuels du portfolio.
-- Envoyer les nouvelles photos et vidéos du Studio vers Cloudinary avec le cloud `vdr0t4kc` et le preset unsigned `portfolio_upload`, puis enregistrer leur URL dans la base existante.
-- Afficher automatiquement ces URL sur l’accueil et dans les projets, tout en conservant la lecture des anciens fichiers Lovable Cloud.
+- Stocker les photos, vidéos et leurs informations (titre, description, catégorie, projet, ordre, visibilité, sélection accueil et format) dans Cloudinary `vdr0t4kc`, sans base Lovable pour les médias ou projets.
+- Récupérer dynamiquement les médias et projets depuis Cloudinary pour l’accueil, les réalisations et le Studio, sans redéploiement après une modification.
 - Ajouter « Remplacer » pour changer un fichier sans perdre son titre, sa description, sa catégorie, son projet ou son ordre.
-- Permettre de retirer un média du portfolio. Avec un preset unsigned seul, cette action ne supprime pas définitivement le fichier de Cloudinary.
-- Vérifier les envois photo/vidéo, le remplacement, le retrait, la persistance et les contrôles de lecture.
+- Permettre de supprimer définitivement un média de Cloudinary avec confirmation, et de gérer les projets même lorsqu’ils ne contiennent pas encore de fichiers.
+- Protéger chaque ajout, modification, remplacement et suppression côté serveur. Conserver la connexion simple par mot de passe dans le Studio, mais remplacer sa vérification navigateur par une session protégée côté serveur.
+- Prévoir le transfert des médias et projets existants vers Cloudinary, sans supprimer les originaux avant vérification réussie.
+- Conserver les textes, couleurs et contacts avec leur fonctionnement actuel : seule la dépendance des médias et projets à Lovable Cloud est supprimée.
+- Vérifier les envois photo/vidéo, les informations enregistrées, le remplacement, la suppression, les contrôles de lecture et le refus des opérations sans accès Studio.
 
 ## Détails techniques
 
-- Envoi navigateur vers l’API unsigned Cloudinary, sans clé privée.
-- Réutilisation du champ URL existant, sans modification de la structure de la base.
-- Résolution partagée des URL externes et des anciens chemins de stockage.
-- Tests ciblés des réponses d’envoi, des erreurs et de la compatibilité des médias existants.
+- API Cloudinary appelée uniquement depuis le serveur pour les opérations privilégiées ; envois signés autorisés par le serveur, sans API Secret dans le navigateur.
+- Métadonnées des médias dans Cloudinary et registre de projets stocké dans Cloudinary, afin de conserver les projets vides et leurs descriptions.
+- Lecture publique limitée aux informations et médias affichés ; informations masquées accessibles uniquement au Studio autorisé.
+- Mot de passe Studio et clé de session dans les secrets serveur ; session chiffrée avec cookie HttpOnly et vérification de session sur chaque opération protégée.
+- Avant mise en œuvre : recueillir l’API Key et l’API Secret via le formulaire sécurisé (Cloudinary → Settings → API Keys). Le cloud name et le preset unsigned seuls ne permettent pas cette gestion sécurisée complète.
+- Tests ciblés des métadonnées, autorisations, erreurs et opérations sur les médias, puis vérification réelle dans le Studio et sur le portfolio.
