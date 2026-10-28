@@ -1,5 +1,10 @@
 # Portfolio audit
 
+## Cloudinary
+- [ ] Send new photos/videos to Cloudinary and save their URLs.
+- [ ] Support replacement and removal while preserving project metadata and existing media.
+- [ ] Verify upload, persistence, public display, replacement and removal.
+
 - [x] Replace archive category dropdown with pill buttons; selection verified in browser.
 - [x] Store contact submissions privately and show confirmed success or retry errors; browser submission checked against stored data.
 - [x] Stabilize video unit tests, including rejected playback; eight focused tests pass.
