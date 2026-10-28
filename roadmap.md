@@ -1,9 +1,10 @@
 # Portfolio audit
 
 ## Cloudinary
-- [ ] Send new photos/videos to Cloudinary and save their URLs.
-- [ ] Support replacement and removal while preserving project metadata and existing media.
-- [ ] Verify upload, persistence, public display, replacement and removal.
+- [ ] Configure server-only Cloudinary credentials and protected Studio access.
+- [ ] Move media and project metadata to Cloudinary; remove their Lovable storage/database dependency while preserving other features.
+- [ ] Support upload, editing, replacement and permanent removal through authorized server operations.
+- [ ] Verify upload, persistence, public display, replacement, removal and unauthorized-request rejection.
 
 - [x] Replace archive category dropdown with pill buttons; selection verified in browser.
 - [x] Store contact submissions privately and show confirmed success or retry errors; browser submission checked against stored data.
