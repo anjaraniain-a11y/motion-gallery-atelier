@@ -48,7 +48,7 @@ function Realisations() {
             ))}
           </div>
           <div role="group" aria-label="Type de réalisation" className="mt-4 flex flex-wrap gap-2">
-            {[["all", "Tous les types"], ...Object.entries(MEDIA_CATEGORIES)].map(([key, label]) => (
+            {Object.entries({ all: "Tous les types", ...MEDIA_CATEGORIES }).map(([key, label]) => (
               <Button key={key} size="sm" className="rounded-full" aria-pressed={category === key}
                 variant={category === key ? "default" : "outline"} onClick={() => setCategory(key)}>
                 {label}
