@@ -1,5 +1,9 @@
 # Portfolio audit
 
+- [ ] Replace archive category dropdown with pill buttons.
+- [ ] Store contact submissions privately and show confirmed success or retry errors.
+- [ ] Stabilize video unit tests and verify the requested flows.
+
 - [x] Add video pause, image enlargement with close control, and editable realization categories.
 
 - [x] Verify scrolling, mobile layout, media presentation, image enlargement, and video pause/resume.
