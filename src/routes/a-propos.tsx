@@ -1,5 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { Send } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { submitContact } from "@/lib/contact.functions";
+import { contactSchema } from "@/lib/contact-schema";
 import { HScroll, Panel } from "@/components/HScroll";
 import { ADMIN_EMAIL, useContent } from "@/lib/site";
 
@@ -20,10 +25,32 @@ export const Route = createFileRoute("/a-propos")({
 function About() {
   const [c] = useContent();
   const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [msg, setMsg] = useState("");
-  const send = (e: React.FormEvent) => {
+  const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
+  const [error, setError] = useState("");
+  const saveContact = useServerFn(submitContact);
+  const send = async (e: React.FormEvent) => {
     e.preventDefault();
-    window.location.href = `mailto:${ADMIN_EMAIL}?subject=${encodeURIComponent("Projet — " + name)}&body=${encodeURIComponent(msg)}`;
+    if (busy) return;
+    const parsed = contactSchema.safeParse({ name, email, message: msg });
+    if (!parsed.success) {
+      setStatus("error");
+      setError(parsed.error.issues[0]?.message ?? "Vérifiez les champs.");
+      return;
+    }
+    setBusy(true);
+    setStatus("idle");
+    try {
+      const result = await saveContact({ data: parsed.data });
+      if (!result.ok) throw new Error("Save failed");
+      setStatus("success");
+      setName(""); setEmail(""); setMsg("");
+    } catch {
+      setStatus("error");
+      setError("Votre message n’a pas été enregistré. Réessayez.");
+    } finally { setBusy(false); }
   };
   const skills = c.about_skills.split("\n").filter(Boolean).map((l) => l.split("|").map((s) => s.trim()));
   return (
@@ -49,9 +76,14 @@ function About() {
         <form onSubmit={send} className="w-[34vw] min-w-[280px] space-y-6">
           <p className="eyebrow">Contact</p>
           <h2 className="text-6xl">{c.contact_title}</h2>
-          <input className="field" placeholder="Votre nom" value={name} onChange={(e) => setName(e.target.value)} required />
-          <textarea className="field h-28 resize-none" placeholder="Votre projet" value={msg} onChange={(e) => setMsg(e.target.value)} required />
-          <button className="btn btn-accent">Envoyer →</button>
+          <fieldset disabled={busy} className="space-y-6">
+            <input aria-label="Votre nom" className="field" placeholder="Votre nom" autoComplete="name" maxLength={100} value={name} onChange={(e) => { setName(e.target.value); setStatus("idle"); }} required />
+            <input aria-label="Votre email" className="field" type="email" placeholder="Votre email" autoComplete="email" maxLength={255} value={email} onChange={(e) => { setEmail(e.target.value); setStatus("idle"); }} required />
+            <textarea aria-label="Votre projet" className="field h-28 resize-none" placeholder="Votre projet" maxLength={5000} value={msg} onChange={(e) => { setMsg(e.target.value); setStatus("idle"); }} required />
+            <Button type="submit" className="rounded-full" disabled={busy}><Send />{busy ? "Envoi…" : "Envoyer"}</Button>
+          </fieldset>
+          {status === "success" && <p role="status" className="text-sm text-primary">Votre message a bien été enregistré. Merci !</p>}
+          {status === "error" && <p role="alert" className="text-sm text-destructive">{error}</p>}
           <p className="text-sm text-muted-foreground">ou <a className="underline" href={`mailto:${ADMIN_EMAIL}`}>{ADMIN_EMAIL}</a></p>
         </form>
       </Panel>
