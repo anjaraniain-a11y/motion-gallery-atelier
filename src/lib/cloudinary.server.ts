@@ -76,7 +76,7 @@ export async function uploadTicket(kind: string, metadata: z.infer<typeof mediaM
   const params = { timestamp: Math.floor(Date.now() / 1000), public_id: PREFIX + crypto.randomUUID(), context: `portfolio=${encodeMetadata(metadata)}` };
   return { params, signature: await signature(params), apiKey: credentials().key, endpoint: `https://api.cloudinary.com/v1_1/${CLOUD}/${kind}/upload` };
 }
-export async function updateMedia(id: string, kind: string, patch: Partial<z.infer<typeof mediaMetadata>>) {
+export async function updateMedia(id: string, kind: string, patch: z.infer<ReturnType<typeof mediaMetadata.partial>>) {
   const old = await readMedia(id, kind);
   const metadata = mediaMetadata.parse({ ...old, ...patch });
   await uploadApi(kind, "context", { command: "add", public_ids: id, context: `portfolio=${encodeMetadata(metadata)}` });
