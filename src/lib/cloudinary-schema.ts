@@ -16,8 +16,8 @@ export const defaultMediaMetadata = {
   project_id: null, sort: 0, visible: true, featured: false, size_class: "visuel" as const,
 };
 export function encodeMetadata(value: unknown) {
-  return btoa(Array.from(new TextEncoder().encode(JSON.stringify(value)), c => String.fromCharCode(c)).join(""));
+  return btoa(Array.from(new TextEncoder().encode(JSON.stringify(value)), c => String.fromCharCode(c)).join("")).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 export function decodeMetadata(value: string) {
-  return JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(value), c => c.charCodeAt(0)))) as unknown;
+  return JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(value.replace(/-/g, "+").replace(/_/g, "/")), c => c.charCodeAt(0)))) as unknown;
 }
