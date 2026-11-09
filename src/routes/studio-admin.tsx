@@ -1,5 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { Button } from "@/components/ui/button";
+import { defaultMediaMetadata, mediaMetadata } from "@/lib/cloudinary-schema";
+import { studioStatus, studioLogin, studioLogout, prepareUpload, finishUpload, editMedia, removeMedia, saveProject, removeProject, importLegacy } from "@/lib/cloudinary.functions";
 import { MEDIA_CATEGORIES, type MediaCategory } from "@/lib/media-categories";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -22,41 +26,33 @@ export const Route = createFileRoute("/studio-admin")({
   component: Admin,
 });
 
-/** Mot de passe admin — modifiable ici. */
-const ADMIN_PASSWORD = "159623874";
-const UNLOCK_KEY = "studio-admin-unlocked-v2";
-
 function Admin() {
   const [unlocked, setUnlocked] = useState(false);
-  useEffect(() => { setUnlocked(localStorage.getItem(UNLOCK_KEY) === "1"); }, []);
-  return (
-    <div className="h-screen overflow-y-auto px-5 pb-20 pt-24 md:px-12 md:pt-28">
-      {unlocked ? (
-        <Dashboard onLock={() => { localStorage.removeItem(UNLOCK_KEY); setUnlocked(false); }} />
-      ) : (
-        <Login onUnlock={() => setUnlocked(true)} />
-      )}
-    </div>
-  );
+  const [loading, setLoading] = useState(true);
+  const status = useServerFn(studioStatus);
+  const logout = useServerFn(studioLogout);
+  useEffect(() => { status().then(r => setUnlocked(r.unlocked)).finally(() => setLoading(false)); }, [status]);
+  return <div className="h-screen overflow-y-auto px-5 pb-20 pt-24 md:px-12 md:pt-28">
+    {loading ? <p>Chargement…</p> : unlocked ? <Dashboard onLock={() => { logout().then(() => setUnlocked(false)); }} /> : <Login onUnlock={() => setUnlocked(true)} />}
+  </div>;
 }
-
 function Login({ onUnlock }: { onUnlock: () => void }) {
+  const login = useServerFn(studioLogin);
   const [pwd, setPwd] = useState("");
-  const [err, setErr] = useState(false);
-  const submit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (pwd === ADMIN_PASSWORD) { localStorage.setItem(UNLOCK_KEY, "1"); onUnlock(); } else setErr(true);
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault(); setBusy(true);
+    try { const r = await login({ data: { password: pwd } }); if (r.ok) onUnlock(); else setErr("Mot de passe incorrect."); }
+    catch { setErr("Connexion impossible. Réessayez."); }
+    finally { setBusy(false); }
   };
-  return (
-    <form onSubmit={submit} className="mx-auto max-w-sm space-y-6">
-      <p className="eyebrow">Studio</p>
-      <h1 className="text-5xl">Accès privé</h1>
-      <input className="field" type="password" placeholder="Mot de passe" autoFocus value={pwd}
-        onChange={(e) => { setPwd(e.target.value); setErr(false); }} />
-      <button className="btn btn-accent" type="submit" disabled={!pwd}>Se connecter</button>
-      {err && <p className="text-sm text-destructive">Mot de passe incorrect.</p>}
-    </form>
-  );
+  return <form onSubmit={submit} className="mx-auto max-w-sm space-y-6">
+    <p className="eyebrow">Studio</p><h1 className="text-5xl">Accès privé</h1>
+    <input className="field" aria-label="Mot de passe" type="password" autoComplete="current-password" placeholder="Mot de passe" autoFocus value={pwd} onChange={e => { setPwd(e.target.value); setErr(""); }} />
+    <Button className="btn btn-accent" type="submit" disabled={!pwd || busy}>{busy ? "Connexion…" : "Se connecter"}</Button>
+    {err && <p role="alert" className="text-sm text-destructive">{err}</p>}
+  </form>;
 }
 
 type Tab = "media" | "projets" | "textes" | "couleurs";
@@ -69,11 +65,11 @@ function Dashboard({ onLock }: { onLock: () => void }) {
     <div className="mx-auto max-w-5xl space-y-10">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <h1 className="text-6xl">Studio</h1>
-        <button className="btn" onClick={onLock}>Déconnexion</button>
+        <Button className="btn" onClick={onLock}>Déconnexion</Button>
       </div>
       <div className="flex flex-wrap gap-2">
         {([["media", "Images & vidéos"], ["projets", "Projets de marque"], ["textes", "Textes"], ["couleurs", "Couleurs"]] as const).map(([k, l]) => (
-          <button key={k} className={tab === k ? "btn btn-accent" : "btn"} onClick={() => setTab(k)}>{l}</button>
+          <Button key={k} className={tab === k ? "btn btn-accent" : "btn"} onClick={() => setTab(k)}>{l}</Button>
         ))}
       </div>
       {msg && <p className="text-sm text-primary">{msg}</p>}
@@ -86,50 +82,50 @@ function Dashboard({ onLock }: { onLock: () => void }) {
 }
 
 function MediaTab({ flash }: { flash: (m: string) => void }) {
-  const { items, reload } = useMedia();
-  const { projects } = useProjects();
+  const { items, reload, error } = useMedia(true);
+  const { projects } = useProjects(true);
   const [busy, setBusy] = useState(false);
   const [filter, setFilter] = useState<string>("all");
 
-  const upload = async (files: FileList | null) => {
-    if (!files?.length) return;
-    setBusy(true);
-    let added = 0;
-    let errors = 0;
+  const prepare = useServerFn(prepareUpload);
+  const finish = useServerFn(finishUpload);
+  const edit = useServerFn(editMedia);
+  const destroy = useServerFn(removeMedia);
+  const migrate = useServerFn(importLegacy);
+  const upload = async (files: FileList | null, replaces?: MediaItem) => {
+    if (!files?.length || busy) return;
+    setBusy(true); let added = 0; let errors = 0;
     for (const f of Array.from(files)) {
-      const path = `${Date.now()}-${f.name.replace(/[^\w.-]/g, "_")}`;
-      const { error } = await supabase.storage.from("media").upload(path, f);
-      if (error) { errors++; continue; }
-      const { error: insertError } = await supabase.from("media").insert({
-        url: path,
-        kind: f.type.startsWith("video") ? "video" : "image",
-        title: f.name.replace(/\.[^.]+$/, ""),
-        project_id: filter !== "all" && filter !== "none" ? filter : null,
-      });
-      if (insertError) {
-        errors++;
-        await supabase.storage.from("media").remove([path]);
-      } else added++;
+      try {
+        const kind = f.type.startsWith("video/") ? "video" : "image";
+        if (!f.type.startsWith("image/") && !f.type.startsWith("video/")) throw new Error("Format non accepté.");
+        const metadata = replaces ? mediaMetadata.parse(replaces) : { ...defaultMediaMetadata, title: f.name.replace(/\.[^.]+$/, ""), project_id: filter !== "all" && filter !== "none" ? filter : null };
+        const ticket = await prepare({ data: { kind, metadata } });
+        const form = new FormData(); form.set("file", f);
+        for (const [k, v] of Object.entries(ticket.params)) form.set(k, String(v));
+        form.set("api_key", ticket.apiKey); form.set("signature", ticket.signature); form.set("signature_algorithm", "sha256");
+        const response = await fetch(ticket.endpoint, { method: "POST", body: form });
+        if (!response.ok) throw new Error(`Envoi refusé (${response.status}).`);
+        const uploaded = await response.json();
+        await finish({ data: { id: uploaded.public_id, kind, ...(replaces ? { replaces: { id: replaces.id, kind: replaces.kind as "image" | "video" } } : {}) } });
+        added++;
+      } catch { errors++; }
     }
-    setBusy(false);
-    flash(errors ? `${added} fichier(s) ajouté(s), ${errors} échec(s). Réessayez.` : "Fichiers ajoutés ✓");
-    reload();
+    setBusy(false); flash(errors ? `${added} ajouté(s), ${errors} échec(s). Réessayez.` : replaces ? "Média remplacé ✓" : "Fichiers ajoutés ✓"); await reload();
   };
-
   const update = async (id: string, patch: Partial<MediaItem>) => {
-    const { src: _s, size_class, ...rest } = patch;
-    const { error } = await supabase.from("media").update({ ...rest, ...(size_class === undefined ? {} : { size_class }) }).eq("id", id);
-    flash(error ? "Enregistrement impossible. Réessayez." : "Enregistré ✓");
-    reload();
+    const m = items?.find(m => m.id === id); if (!m || busy) return;
+    setBusy(true);
+    try { await edit({ data: { id, kind: m.kind as "image" | "video", patch: mediaMetadata.partial().parse(patch) } }); flash("Enregistré ✓"); }
+    catch { flash("Enregistrement impossible. Réessayez."); }
+    finally { setBusy(false); await reload(); }
   };
   const remove = async (m: MediaItem) => {
-    if (!confirm(`Supprimer définitivement « ${m.title} » ?`)) return;
-    const { error: storageError } = await supabase.storage.from("media").remove([m.url]);
-    if (storageError) { flash("Suppression du fichier impossible. Réessayez."); return; }
-    const { error } = await supabase.from("media").delete().eq("id", m.id);
-    if (error) { flash("Suppression de la fiche impossible. Réessayez."); return; }
-    flash("Supprimé ✓");
-    reload();
+    if (busy || !confirm(`Supprimer définitivement « ${m.title} » de Cloudinary ?`)) return;
+    setBusy(true);
+    try { await destroy({ data: { id: m.id, kind: m.kind as "image" | "video" } }); flash("Supprimé ✓"); }
+    catch { flash("Suppression impossible. Réessayez."); }
+    finally { setBusy(false); await reload(); }
   };
 
   const list = (items ?? []).filter((m) =>
@@ -137,6 +133,7 @@ function MediaTab({ flash }: { flash: (m: string) => void }) {
 
   return (
     <section className="space-y-6">
+      {error && <p role="alert" className="text-destructive">Cloudinary indisponible. Vérifiez vos accès ou réessayez.</p>}
       <div className="flex flex-wrap items-center gap-4">
         <label className="btn btn-accent cursor-pointer">
           {busy ? "Envoi…" : "+ Ajouter des fichiers"}
@@ -148,11 +145,14 @@ function MediaTab({ flash }: { flash: (m: string) => void }) {
           {projects?.map((p) => <option key={p.id} value={p.id}>Projet : {p.title || "Sans titre"}</option>)}
         </select>
       </div>
-      <p className="text-xs text-muted-foreground">Les fichiers ajoutés vont dans le projet sélectionné ci-dessus.</p>
+      <Button variant="outline" disabled={busy} onClick={async () => {
+        if (!confirm("Importer les anciens médias et projets ? Les originaux seront conservés.")) return;
+        setBusy(true); try { const r = await migrate(); flash(`${r.count} ancien(s) fichier(s) importé(s) ✓`); } catch (e) { flash(e instanceof Error ? e.message : "Import impossible."); } finally { setBusy(false); await reload(); }
+      }}>Importer les anciens médias</Button>
       {items && !list.length && <p className="text-muted-foreground">Aucun fichier.</p>}
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3">
         {list.map((m) => (
-          <div key={m.id} className={`space-y-2 border border-border p-3 ${m.visible ? "" : "opacity-50"}`}>
+          <fieldset disabled={busy} key={m.id} className={`space-y-2 border border-border p-3 ${m.visible ? "" : "opacity-50"}`}>
             <div className="aspect-[4/3] overflow-hidden bg-card">
               {m.kind === "video" ? (
                 <video src={m.src} muted loop controls playsInline className="h-full w-full object-contain" />
@@ -186,9 +186,12 @@ function MediaTab({ flash }: { flash: (m: string) => void }) {
               <label className="flex items-center gap-1">Ordre
                 <input type="number" className="field w-12 text-xs" defaultValue={m.sort} onBlur={(e) => update(m.id, { sort: Number(e.target.value) })} />
               </label>
-              <button className="text-destructive" onClick={() => remove(m)}>Supprimer</button>
+              <label className="btn cursor-pointer">Remplacer
+                <input aria-label={`Remplacer ${m.title}`} type="file" accept="image/*,video/*" className="hidden" disabled={busy} onChange={e => { upload(e.target.files, m); e.target.value = ""; }} />
+              </label>
+              <Button variant="ghost" className="text-destructive" onClick={() => remove(m)}>Supprimer</Button>
             </div>
-          </div>
+          </fieldset>
         ))}
       </div>
     </section>
@@ -196,31 +199,30 @@ function MediaTab({ flash }: { flash: (m: string) => void }) {
 }
 
 function ProjectsTab({ flash }: { flash: (m: string) => void }) {
-  const { projects, reload } = useProjects();
-  const add = async () => {
-    const { error } = await supabase.from("projects").insert({ title: "Nouveau projet", sort: (projects?.length ?? 0) });
-    flash(error ? "Création impossible. Réessayez." : "Projet ajouté ✓");
-    reload();
-  };
+  const { projects, reload, error } = useProjects(true);
+  const save = useServerFn(saveProject);
+  const destroy = useServerFn(removeProject);
+  const [busy, setBusy] = useState(false);
   const update = async (id: string, patch: Partial<Project>) => {
-    const { error } = await supabase.from("projects").update(patch).eq("id", id);
-    flash(error ? "Enregistrement impossible. Réessayez." : "Enregistré ✓");
-    reload();
+    if (busy) return; const p = projects?.find(p => p.id === id); if (!p) return;
+    setBusy(true); try { await save({ data: { ...p, ...patch } }); flash("Enregistré ✓"); } catch { flash("Enregistrement impossible. Réessayez."); } finally { setBusy(false); await reload(); }
+  };
+  const add = async () => {
+    setBusy(true); try { await save({ data: { id: crypto.randomUUID(), title: "Nouveau projet", brand: "", description: "", visible: true, sort: projects?.length ?? 0 } }); flash("Projet ajouté ✓"); } catch { flash("Création impossible. Réessayez."); } finally { setBusy(false); await reload(); }
   };
   const remove = async (p: Project) => {
-    if (!confirm(`Supprimer le projet « ${p.title} » ? Ses visuels deviennent des visuels uniques.`)) return;
-    const { error } = await supabase.from("projects").delete().eq("id", p.id);
-    flash(error ? "Suppression impossible. Réessayez." : "Projet supprimé ✓");
-    reload();
+    if (busy || !confirm(`Supprimer le projet « ${p.title} » ? Ses visuels deviennent des visuels uniques.`)) return;
+    setBusy(true); try { await destroy({ data: { id: p.id } }); flash("Projet supprimé ✓"); } catch { flash("Suppression impossible. Réessayez."); } finally { setBusy(false); await reload(); }
   };
   return (
     <section className="space-y-6">
       <p className="text-sm text-muted-foreground">
         Un projet de marque regroupe plusieurs visuels (logo, affiches, vidéos…). Ajoutez ensuite les fichiers dans l'onglet « Images & vidéos ».
       </p>
-      <button className="btn btn-accent" onClick={add}>+ Nouveau projet</button>
+      {error && <p role="alert" className="text-destructive">Projets indisponibles. Réessayez.</p>}
+      <Button className="btn btn-accent" disabled={busy} onClick={add}>+ Nouveau projet</Button>
       {projects?.map((p) => (
-        <div key={p.id} className={`grid gap-3 border border-border p-4 md:grid-cols-2 ${p.visible ? "" : "opacity-50"}`}>
+        <fieldset disabled={busy} key={p.id} className={`grid gap-3 border border-border p-4 md:grid-cols-2 ${p.visible ? "" : "opacity-50"}`}>
           <input className="field" placeholder="Titre du projet" defaultValue={p.title} onBlur={(e) => e.target.value !== p.title && update(p.id, { title: e.target.value })} />
           <input className="field" placeholder="Marque / client" defaultValue={p.brand} onBlur={(e) => e.target.value !== p.brand && update(p.id, { brand: e.target.value })} />
           <textarea className="field h-20 resize-none text-sm md:col-span-2" placeholder="Description du projet" defaultValue={p.description}
@@ -230,9 +232,9 @@ function ProjectsTab({ flash }: { flash: (m: string) => void }) {
             <label className="flex items-center gap-2">Ordre
               <input type="number" className="field w-14" defaultValue={p.sort} onBlur={(e) => update(p.id, { sort: Number(e.target.value) })} />
             </label>
-            <button className="ml-auto text-destructive" onClick={() => remove(p)}>Supprimer</button>
+            <Button className="ml-auto text-destructive" onClick={() => remove(p)}>Supprimer</Button>
           </div>
-        </div>
+        </fieldset>
       ))}
     </section>
   );
@@ -253,7 +255,7 @@ function TextsTab({ flash }: { flash: (m: string) => void }) {
           <textarea className="field min-h-12 resize-y text-sm" value={c[k]} onChange={(e) => setC({ ...c, [k]: e.target.value })} />
         </label>
       ))}
-      <button className="btn btn-accent" onClick={save}>Enregistrer les textes</button>
+      <Button className="btn btn-accent" onClick={save}>Enregistrer les textes</Button>
     </section>
   );
 }
@@ -277,7 +279,7 @@ function ColorsTab({ flash }: { flash: (m: string) => void }) {
   return (
     <section className="space-y-4">
       <div className="flex flex-wrap gap-8">{field("background", "Fond")}{field("foreground", "Texte")}{field("accent", "Accent")}</div>
-      <button className="btn btn-accent" onClick={save}>Enregistrer</button>
+      <Button className="btn btn-accent" onClick={save}>Enregistrer</Button>
     </section>
   );
 }

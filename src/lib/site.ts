@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { publicPortfolio, studioPortfolio } from "./cloudinary.functions";
 import { supabase } from "@/integrations/supabase/client";
 import type { MediaCategory } from "@/lib/media-categories";
 
@@ -78,27 +80,19 @@ export function useContent() {
 }
 
 export async function fetchMedia(): Promise<MediaItem[]> {
-  const { data } = await supabase.from("media").select("*")
-    .order("sort", { ascending: true }).order("created_at", { ascending: false });
-  const items = (data ?? []) as MediaItem[];
-  if (!items.length) return items;
-  const { data: signed } = await supabase.storage.from("media")
-    .createSignedUrls(items.map((i) => i.url), 60 * 60 * 24 * 7);
-  return items.map((i, idx) => ({ ...i, src: signed?.[idx]?.signedUrl ?? "" }));
+  return (await publicPortfolio()).items;
 }
 
-export function useMedia() {
-  const [items, setItems] = useState<MediaItem[] | null>(null);
-  const reload = () => fetchMedia().then(setItems);
-  useEffect(() => { reload(); }, []);
-  return { items, reload };
+function usePortfolio(studio: boolean) {
+  return useQuery({ queryKey: ["cloudinary-portfolio", studio], queryFn: () => studio ? studioPortfolio() : publicPortfolio(), staleTime: 30_000, retry: false });
 }
 
-export function useProjects() {
-  const [projects, setP] = useState<Project[] | null>(null);
-  const reload = () =>
-    supabase.from("projects").select("*").order("sort").order("created_at")
-      .then(({ data }) => setP((data ?? []) as Project[]));
-  useEffect(() => { reload(); }, []);
-  return { projects, reload };
+export function useMedia(studio = false) {
+  const query = usePortfolio(studio);
+  return { items: query.data?.items ?? null, reload: query.refetch, error: query.error };
+}
+
+export function useProjects(studio = false) {
+  const query = usePortfolio(studio);
+  return { projects: query.data?.projects ?? null, reload: query.refetch, error: query.error };
 }
