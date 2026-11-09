@@ -1,9 +1,9 @@
 # Portfolio audit
 
 ## Cloudinary
-- [ ] Configure server-only Cloudinary credentials and protected Studio access.
-- [ ] Move media and project metadata to Cloudinary; remove their Lovable storage/database dependency while preserving other features.
-- [ ] Support upload, editing, replacement and permanent removal through authorized server operations.
+- [x] Configure server-only Cloudinary credentials and protected Studio access.
+- [x] Move media and project metadata to Cloudinary; remove their Lovable storage/database dependency while preserving other features.
+- [x] Support upload, editing, replacement and permanent removal through authorized server operations.
 - [ ] Verify upload, persistence, public display, replacement, removal and unauthorized-request rejection.
 
 - [x] Replace archive category dropdown with pill buttons; selection verified in browser.
