@@ -41,7 +41,10 @@ export const saveMediaLink = createServerFn({ method: "POST" })
 export const editMedia = createServerFn({ method: "POST" }).inputValidator(ref.extend({ patch: mediaMetadata.partial() })).handler(async ({ data }) => {
   await requireStudio();
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const result = await supabaseAdmin.from("media").update(data.patch).eq("id", data.id).select("id").single();
+  const existing = await supabaseAdmin.from("media").select("*").eq("id", data.id).single();
+  if (existing.error) throw new Error("Média introuvable.");
+  const patch = Object.fromEntries(Object.entries(data.patch).filter(([, value]) => value !== undefined));
+  const result = await supabaseAdmin.from("media").update(mediaMetadata.parse({ ...existing.data, ...patch })).eq("id", data.id).select("id").single();
   if (result.error) throw new Error("Modification impossible.");
   return { ok: true };
 });
@@ -74,7 +77,9 @@ export const importLegacy = createServerFn({ method: "POST" }).handler(async () 
   const previous = await readPortfolio();
   const ids = new Map(previous.projects.map(p => [p.id, z.string().uuid().safeParse(p.id).success ? p.id : crypto.randomUUID()]));
   for (const p of previous.projects) {
-    const result = await supabaseAdmin.from("projects").upsert({ ...p, id: ids.get(p.id) });
+    const id = ids.get(p.id);
+    if (!id) throw new Error("Projet invalide.");
+    const result = await supabaseAdmin.from("projects").upsert({ ...p, id });
     if (result.error) throw new Error("Import du projet impossible.");
   }
   let count = 0;
