@@ -10,6 +10,7 @@ describe("Cloudinary links", () => {
     expect(kindFromLink("https://res.cloudinary.com/vdr0t4kc/video/upload/motion.mp4")).toBe("video");
   });
   it("rejects non-Cloudinary and insecure links", () => {
+    expect(cloudinaryLink.safeParse("old-storage-path/image.jpg").success).toBe(false);
     expect(cloudinaryLink.safeParse("https://example.com/image.jpg").success).toBe(false);
     expect(cloudinaryLink.safeParse("http://res.cloudinary.com/vdr0t4kc/image/upload/logo.jpg").success).toBe(false);
   });

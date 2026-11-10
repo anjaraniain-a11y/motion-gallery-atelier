@@ -1,8 +1,10 @@
 import { z } from "zod";
 
 export const cloudinaryLink = z.string().trim().url("Lien invalide.").max(4000).refine(value => {
-  const url = new URL(value);
-  return url.protocol === "https:" && url.hostname === "res.cloudinary.com" && /^\/[^/]+\/(image|video)\/upload\/.+/.test(url.pathname) && !url.username && !url.password;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && url.hostname === "res.cloudinary.com" && /^\/[^/]+\/(image|video)\/upload\/.+/.test(url.pathname) && !url.username && !url.password;
+  } catch { return false; }
 }, "Utilisez un lien direct HTTPS Cloudinary (image ou vidéo).");
 
 export function kindFromLink(value: string): "image" | "video" {
