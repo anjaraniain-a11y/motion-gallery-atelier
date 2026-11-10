@@ -84,7 +84,7 @@ export async function fetchMedia(): Promise<MediaItem[]> {
 }
 
 function usePortfolio(studio: boolean) {
-  return useQuery({ queryKey: ["cloudinary-portfolio", studio], queryFn: () => studio ? studioPortfolio() : publicPortfolio(), staleTime: 30_000, retry: false });
+  return useQuery({ queryKey: ["linked-portfolio", studio], queryFn: () => studio ? studioPortfolio() : publicPortfolio(), staleTime: 30_000, retry: false });
 }
 
 export function useMedia(studio = false) {

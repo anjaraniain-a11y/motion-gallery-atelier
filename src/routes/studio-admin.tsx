@@ -3,7 +3,8 @@ import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Button } from "@/components/ui/button";
 import { defaultMediaMetadata, mediaMetadata } from "@/lib/cloudinary-schema";
-import { studioStatus, studioLogin, studioLogout, prepareUpload, finishUpload, editMedia, removeMedia, saveProject, removeProject, importLegacy } from "@/lib/cloudinary.functions";
+import { studioStatus, studioLogin, studioLogout, saveMediaLink, editMedia, removeMedia, saveProject, removeProject, importLegacy } from "@/lib/cloudinary.functions";
+import { cloudinaryLink } from "@/lib/media-links";
 import { MEDIA_CATEGORIES, type MediaCategory } from "@/lib/media-categories";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -87,31 +88,24 @@ function MediaTab({ flash }: { flash: (m: string) => void }) {
   const [busy, setBusy] = useState(false);
   const [filter, setFilter] = useState<string>("all");
 
-  const prepare = useServerFn(prepareUpload);
-  const finish = useServerFn(finishUpload);
+  const saveLink = useServerFn(saveMediaLink);
+  const [url, setUrl] = useState("");
+  const [linkError, setLinkError] = useState("");
+  const [replacing, setReplacing] = useState<MediaItem | null>(null);
   const edit = useServerFn(editMedia);
   const destroy = useServerFn(removeMedia);
   const migrate = useServerFn(importLegacy);
-  const upload = async (files: FileList | null, replaces?: MediaItem) => {
-    if (!files?.length || busy) return;
-    setBusy(true); let added = 0; let errors = 0;
-    for (const f of Array.from(files)) {
-      try {
-        const kind = f.type.startsWith("video/") ? "video" : "image";
-        if (!f.type.startsWith("image/") && !f.type.startsWith("video/")) throw new Error("Format non accepté.");
-        const metadata = replaces ? mediaMetadata.parse(replaces) : { ...defaultMediaMetadata, title: f.name.replace(/\.[^.]+$/, ""), project_id: filter !== "all" && filter !== "none" ? filter : null };
-        const ticket = await prepare({ data: { kind, metadata } });
-        const form = new FormData(); form.set("file", f);
-        for (const [k, v] of Object.entries(ticket.params)) form.set(k, String(v));
-        form.set("api_key", ticket.apiKey); form.set("signature", ticket.signature); form.set("signature_algorithm", "sha256");
-        const response = await fetch(ticket.endpoint, { method: "POST", body: form });
-        if (!response.ok) throw new Error(`Envoi refusé (${response.status}).`);
-        const uploaded = await response.json();
-        await finish({ data: { id: uploaded.public_id, kind, ...(replaces ? { replaces: { id: replaces.id, kind: replaces.kind as "image" | "video" } } : {}) } });
-        added++;
-      } catch { errors++; }
-    }
-    setBusy(false); flash(errors ? `${added} ajouté(s), ${errors} échec(s). Réessayez.` : replaces ? "Média remplacé ✓" : "Fichiers ajoutés ✓"); await reload();
+  const addLink = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (busy) return;
+    const parsed = cloudinaryLink.safeParse(url);
+    if (!parsed.success) { setLinkError(parsed.error.issues[0]?.message ?? "Lien invalide."); return; }
+    setBusy(true); setLinkError("");
+    try {
+      await saveLink({ data: { url: parsed.data, metadata: replacing ? mediaMetadata.parse(replacing) : { ...defaultMediaMetadata, title: "Sans titre", project_id: filter !== "all" && filter !== "none" ? filter : null }, ...(replacing ? { id: replacing.id } : {}) } });
+      setUrl(""); setReplacing(null); flash("Lien enregistré ✓"); await reload();
+    } catch { setLinkError("Enregistrement impossible. Réessayez."); }
+    finally { setBusy(false); }
   };
   const update = async (id: string, patch: Partial<MediaItem>) => {
     const m = items?.find(m => m.id === id); if (!m || busy) return;
@@ -121,7 +115,7 @@ function MediaTab({ flash }: { flash: (m: string) => void }) {
     finally { setBusy(false); await reload(); }
   };
   const remove = async (m: MediaItem) => {
-    if (busy || !confirm(`Supprimer définitivement « ${m.title} » de Cloudinary ?`)) return;
+    if (busy || !confirm(`Retirer « ${m.title} » du portfolio ? Le fichier Cloudinary sera conservé.`)) return;
     setBusy(true);
     try { await destroy({ data: { id: m.id, kind: m.kind as "image" | "video" } }); flash("Supprimé ✓"); }
     catch { flash("Suppression impossible. Réessayez."); }
@@ -133,22 +127,28 @@ function MediaTab({ flash }: { flash: (m: string) => void }) {
 
   return (
     <section className="space-y-6">
-      {error && <p role="alert" className="text-destructive">Cloudinary indisponible. Vérifiez vos accès ou réessayez.</p>}
+      {error && <p role="alert" className="text-destructive">Médias indisponibles. Réessayez.</p>}
       <div className="flex flex-wrap items-center gap-4">
-        <label className="btn btn-accent cursor-pointer">
-          {busy ? "Envoi…" : "+ Ajouter des fichiers"}
-          <input type="file" multiple accept="image/*,video/*" className="hidden" disabled={busy} onChange={(e) => { upload(e.target.files); e.target.value = ""; }} />
-        </label>
         <select className="field w-auto text-sm" value={filter} onChange={(e) => setFilter(e.target.value)}>
           <option value="all">Tous les fichiers</option>
           <option value="none">Visuels uniques (sans projet)</option>
           {projects?.map((p) => <option key={p.id} value={p.id}>Projet : {p.title || "Sans titre"}</option>)}
         </select>
       </div>
-      <Button variant="outline" disabled={busy} onClick={async () => {
-        if (!confirm("Importer les anciens médias et projets ? Les originaux seront conservés.")) return;
-        setBusy(true); try { const r = await migrate(); flash(`${r.count} ancien(s) fichier(s) importé(s) ✓`); } catch (e) { flash(e instanceof Error ? e.message : "Import impossible."); } finally { setBusy(false); await reload(); }
-      }}>Importer les anciens médias</Button>
+      <form onSubmit={addLink} className="space-y-3">
+        <label className="block space-y-1">
+          <span className="text-sm">{replacing ? `Remplacer : ${replacing.title}` : "Lien Cloudinary"}</span>
+          <input className="field" aria-label="Lien Cloudinary" type="url" required value={url} placeholder="https://res.cloudinary.com/…" disabled={busy} onChange={e => { setUrl(e.target.value); setLinkError(""); }} />
+        </label>
+        <div className="flex flex-wrap gap-2">
+          <Button type="submit" className="btn btn-accent" disabled={busy || !url}>{busy ? "Enregistrement…" : replacing ? "Enregistrer le remplacement" : "Ajouter le lien"}</Button>
+          {replacing && <Button type="button" variant="outline" onClick={() => { setReplacing(null); setUrl(""); }}>Annuler</Button>}
+          <Button type="button" variant="outline" disabled={busy} onClick={async () => {
+            setBusy(true); try { const r = await migrate(); flash(`${r.count} lien(s) récupéré(s) ✓`); } catch { flash("Récupération impossible. Réessayez."); } finally { setBusy(false); await reload(); }
+          }}>Récupérer les liens existants</Button>
+        </div>
+        {linkError && <p role="alert" className="text-sm text-destructive">{linkError}</p>}
+      </form>
       {items && !list.length && <p className="text-muted-foreground">Aucun fichier.</p>}
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3">
         {list.map((m) => (
@@ -186,10 +186,8 @@ function MediaTab({ flash }: { flash: (m: string) => void }) {
               <label className="flex items-center gap-1">Ordre
                 <input type="number" className="field w-12 text-xs" defaultValue={m.sort} onBlur={(e) => update(m.id, { sort: Number(e.target.value) })} />
               </label>
-              <label className="btn cursor-pointer">Remplacer
-                <input aria-label={`Remplacer ${m.title}`} type="file" accept="image/*,video/*" className="hidden" disabled={busy} onChange={e => { upload(e.target.files, m); e.target.value = ""; }} />
-              </label>
-              <Button variant="ghost" className="text-destructive" onClick={() => remove(m)}>Supprimer</Button>
+              <Button variant="outline" onClick={() => { setReplacing(m); setUrl(m.url); document.querySelector<HTMLInputElement>('[aria-label="Lien Cloudinary"]')?.focus(); }}>Remplacer</Button>
+               <Button variant="ghost" className="text-destructive" onClick={() => remove(m)}>Supprimer</Button>
             </div>
           </fieldset>
         ))}
