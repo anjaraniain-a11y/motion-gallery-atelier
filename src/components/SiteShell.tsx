@@ -1,9 +1,20 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
 import { useSettings } from "@/lib/site";
+import { isStudioShortcut } from "@/lib/media-links";
 
 export function SiteShell({ children }: { children: ReactNode }) {
   const [s] = useSettings();
+  const navigate = useNavigate();
+  useEffect(() => {
+    const shortcut = (event: KeyboardEvent) => {
+      if (!isStudioShortcut(event)) return;
+      event.preventDefault();
+      void navigate({ to: "/studio-admin" });
+    };
+    window.addEventListener("keydown", shortcut);
+    return () => window.removeEventListener("keydown", shortcut);
+  }, [navigate]);
   useEffect(() => {
     const r = document.documentElement.style;
     r.setProperty("--site-bg", s.background);

@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Pause, Play, Maximize2 } from "lucide-react";
+import { Pause, Play, Maximize2, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { MEDIA_CATEGORIES, type MediaCategory } from "@/lib/media-categories";
@@ -24,6 +24,13 @@ export function MediaCard({
   const video = useRef<HTMLVideoElement>(null);
   const [paused, setPaused] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [volume, setVolume] = useState(0);
+  const setVideoVolume = (value: number) => {
+    if (!video.current) return;
+    video.current.volume = value;
+    video.current.muted = value === 0;
+    setVolume(value);
+  };
   const toggle = async () => {
     if (!video.current) return;
     if (video.current.paused) {
@@ -35,10 +42,14 @@ export function MediaCard({
       <div className="media-frame">
         {failed || !src ? <p className="p-6 text-muted-foreground">Média indisponible.</p> : kind === "video" ? (
           <>
-            <video ref={video} src={src} autoPlay muted loop playsInline onPlay={() => setPaused(false)} onPause={() => setPaused(true)} onError={() => setFailed(true)} />
-            <Button variant="outline" size="icon" className="media-pause" onClick={toggle} aria-label={`${paused ? "Lire" : "Mettre en pause"} : ${title}`} title={paused ? "Lire" : "Mettre en pause"}>
+            <video ref={video} src={src} autoPlay muted={volume === 0} loop playsInline onPlay={() => setPaused(false)} onPause={() => setPaused(true)} onVolumeChange={() => setVolume(video.current?.muted ? 0 : video.current?.volume ?? 0)} onError={() => setFailed(true)} />
+            <div className="media-video-controls">
+            <Button variant="outline" size="icon" onClick={toggle} aria-label={`${paused ? "Lire" : "Mettre en pause"} : ${title}`} title={paused ? "Lire" : "Mettre en pause"}>
               {paused ? <Play /> : <Pause />}
             </Button>
+            <Button variant="outline" size="icon" onClick={() => setVideoVolume(volume > 0 ? 0 : 0.5)} aria-label={`${volume > 0 ? "Couper le son" : "Activer le son"} : ${title}`} title={volume > 0 ? "Couper le son" : "Activer le son"}>{volume > 0 ? <Volume2 /> : <VolumeX />}</Button>
+            <input type="range" min="0" max="1" step="0.01" value={volume} onChange={e => setVideoVolume(Number(e.target.value))} aria-label={`Volume : ${title}`} className="media-volume" />
+            </div>
           </>
         ) : (
           <Dialog>

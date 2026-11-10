@@ -12,5 +12,5 @@
 - Keep media categories and public visibility selection in a shared browser-safe module so home and archives obey the same rules.
 - Use the shared MediaCard for portfolio images and videos; its accessible dialog and playback controls apply to both singles and brand projects.
 - Contact submissions use a validated, public write-only server function; messages remain private and no read endpoint is exposed because the studio password gate is not server authentication.
-- Media and project reads/writes use Cloudinary REST in server-only helpers; per-asset context holds encoded metadata and a dedicated registry asset retains empty projects, avoiding a database dependency.
-- Studio media operations verify an encrypted HttpOnly server session on every call; signed direct uploads never expose the Cloudinary secret and replacements retain metadata before deleting originals.
+- Media URLs and project metadata live in existing Cloud tables; only validated HTTPS Cloudinary delivery links are rendered, avoiding provider API calls on normal reads and writes.
+- Studio mutations verify the encrypted HttpOnly session; replacing or removing a link leaves the remote file intact, while a manual legacy import copies existing API-managed URLs without reuploading.
