@@ -2,7 +2,9 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { mediaMetadata, projectMetadata } from "./cloudinary-schema";
 import { studioSession, requireStudio } from "./studio.server";
-import { readPortfolio, readMedia, readProjects, writeProjects, uploadTicket, updateMedia, deleteMedia, importLegacyFile } from "./cloudinary.server";
+import { readPortfolio } from "./cloudinary.server";
+import { readLinkedPortfolio } from "./linked-media.server";
+import { cloudinaryLink, kindFromLink } from "./media-links";
 import { selectPublicMedia } from "./media-categories";
 
 const ref = z.object({ id: z.string(), kind: z.enum(["image", "video"]) });
@@ -15,53 +17,72 @@ export const studioLogin = createServerFn({ method: "POST" }).inputValidator(z.o
 });
 export const studioLogout = createServerFn({ method: "POST" }).handler(async () => { await (await studioSession()).clear(); return { ok: true }; });
 export const publicPortfolio = createServerFn({ method: "GET" }).handler(async () => {
-  const { items, projects } = await readPortfolio();
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { items, projects } = await readLinkedPortfolio(supabaseAdmin);
   return { items: selectPublicMedia(items, projects), projects: projects.filter(p => p.visible) };
 });
-export const studioPortfolio = createServerFn({ method: "GET" }).handler(async () => { await requireStudio(); return readPortfolio(); });
-export const prepareUpload = createServerFn({ method: "POST" }).inputValidator(z.object({ kind: ref.shape.kind, metadata: mediaMetadata })).handler(async ({ data }) => {
+export const studioPortfolio = createServerFn({ method: "GET" }).handler(async () => {
   await requireStudio();
-  if (data.metadata.project_id && !(await readProjects()).some(p => p.id === data.metadata.project_id)) throw new Error("Projet introuvable.");
-  return uploadTicket(data.kind, data.metadata);
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  return readLinkedPortfolio(supabaseAdmin);
 });
-export const finishUpload = createServerFn({ method: "POST" }).inputValidator(ref.extend({ replaces: ref.optional() })).handler(async ({ data }) => {
-  await requireStudio();
-  const uploaded = await readMedia(data.id, data.kind);
-  if (data.replaces) {
-    const old = await readMedia(data.replaces.id, data.replaces.kind);
-    await updateMedia(data.id, data.kind, mediaMetadata.parse(old));
-    await deleteMedia(old.id, old.kind);
-  }
-  return uploaded;
-});
+export const saveMediaLink = createServerFn({ method: "POST" })
+  .inputValidator(z.object({ url: cloudinaryLink, metadata: mediaMetadata, id: z.string().uuid().optional() }))
+  .handler(async ({ data }) => {
+    await requireStudio();
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const row = { ...data.metadata, url: data.url, kind: kindFromLink(data.url) };
+    const result = data.id
+      ? await supabaseAdmin.from("media").update({ url: row.url, kind: row.kind }).eq("id", data.id).select("id").single()
+      : await supabaseAdmin.from("media").insert(row).select("id").single();
+    if (result.error) throw new Error("Enregistrement du lien impossible.");
+    return { ok: true };
+  });
 export const editMedia = createServerFn({ method: "POST" }).inputValidator(ref.extend({ patch: mediaMetadata.partial() })).handler(async ({ data }) => {
   await requireStudio();
-  if (data.patch.project_id && !(await readProjects()).some(p => p.id === data.patch.project_id)) throw new Error("Projet introuvable.");
-  await updateMedia(data.id, data.kind, data.patch); return { ok: true };
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const result = await supabaseAdmin.from("media").update(data.patch).eq("id", data.id).select("id").single();
+  if (result.error) throw new Error("Modification impossible.");
+  return { ok: true };
 });
-export const removeMedia = createServerFn({ method: "POST" }).inputValidator(ref).handler(async ({ data }) => { await requireStudio(); await deleteMedia(data.id, data.kind); return { ok: true }; });
+export const removeMedia = createServerFn({ method: "POST" }).inputValidator(ref).handler(async ({ data }) => {
+  await requireStudio();
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const result = await supabaseAdmin.from("media").delete().eq("id", data.id).select("id").single();
+  if (result.error) throw new Error("Retrait impossible.");
+  return { ok: true };
+});
 export const saveProject = createServerFn({ method: "POST" }).inputValidator(projectMetadata).handler(async ({ data }) => {
-  await requireStudio(); const projects = await readProjects();
-  await writeProjects([...projects.filter(p => p.id !== data.id), data]); return { ok: true };
+  await requireStudio();
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const result = await supabaseAdmin.from("projects").upsert(data);
+  if (result.error) throw new Error("Enregistrement du projet impossible.");
+  return { ok: true };
 });
-export const removeProject = createServerFn({ method: "POST" }).inputValidator(z.object({ id: z.string() })).handler(async ({ data }) => {
-  await requireStudio(); const { items, projects } = await readPortfolio();
-  for (const m of items.filter(m => m.project_id === data.id)) await updateMedia(m.id, m.kind, { project_id: null });
-  await writeProjects(projects.filter(p => p.id !== data.id)); return { ok: true };
+export const removeProject = createServerFn({ method: "POST" }).inputValidator(z.object({ id: z.string().uuid() })).handler(async ({ data }) => {
+  await requireStudio();
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const result = await supabaseAdmin.from("projects").delete().eq("id", data.id).select("id").single();
+  if (result.error) throw new Error("Suppression du projet impossible.");
+  return { ok: true };
 });
-// Explicit one-time import; originals are never deleted. Not used by public reads.
+// One-time copy of existing Cloudinary URLs only; never uploads or deletes files.
 export const importLegacy = createServerFn({ method: "POST" }).handler(async () => {
   await requireStudio();
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const [media, projects] = await Promise.all([supabaseAdmin.from("media").select("*"), supabaseAdmin.from("projects").select("*")]);
-  if (media.error || projects.error) throw new Error("Lecture des anciens fichiers impossible.");
-  const current = await readPortfolio();
-  if (current.items.length || current.projects.length) throw new Error("Import disponible uniquement avant votre premier ajout Cloudinary.");
-  await writeProjects((projects.data ?? []).map(p => projectMetadata.parse(p)));
-  for (const m of media.data ?? []) {
-    const { data, error } = await supabaseAdmin.storage.from("media").createSignedUrl(m.url, 3600);
-    if (error || !data) throw new Error("Ancien fichier indisponible ; original conservé.");
-    await importLegacyFile(data.signedUrl, m.kind, mediaMetadata.parse(m));
+  const current = await readLinkedPortfolio(supabaseAdmin);
+  const previous = await readPortfolio();
+  const ids = new Map(previous.projects.map(p => [p.id, z.string().uuid().safeParse(p.id).success ? p.id : crypto.randomUUID()]));
+  for (const p of previous.projects) {
+    const result = await supabaseAdmin.from("projects").upsert({ ...p, id: ids.get(p.id) });
+    if (result.error) throw new Error("Import du projet impossible.");
   }
-  return { count: media.data?.length ?? 0 };
+  let count = 0;
+  for (const m of previous.items) {
+    if (current.items.some(old => old.url === m.url)) continue;
+    const result = await supabaseAdmin.from("media").insert({ ...mediaMetadata.parse(m), project_id: m.project_id ? ids.get(m.project_id) ?? null : null, url: cloudinaryLink.parse(m.url), kind: m.kind });
+    if (result.error) throw new Error("Import du lien impossible.");
+    count++;
+  }
+  return { count };
 });
