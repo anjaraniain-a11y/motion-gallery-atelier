@@ -1,5 +1,10 @@
 # Portfolio audit
 
+## Link-based media and controls
+- [ ] Replace uploads with saved Cloudinary links and retain metadata/project editing.
+- [ ] Add Ctrl+Shift+A navigation to Studio and video volume controls.
+- [ ] Verify link creation/replacement/removal and controls.
+
 ## Cloudinary
 - [x] Configure server-only Cloudinary credentials and protected Studio access.
 - [x] Move media and project metadata to Cloudinary; remove their Lovable storage/database dependency while preserving other features.
